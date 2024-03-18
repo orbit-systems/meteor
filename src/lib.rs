@@ -1,6 +1,8 @@
 #![warn(clippy::pedantic)]
 #![no_std]
 
+// TODO: make the aphelion-util library no_std
+
 #[cfg(feature = "std")]
 extern crate std;
 
