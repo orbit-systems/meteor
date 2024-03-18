@@ -1,4 +1,4 @@
-use std::{
+use core::{
     borrow::{Borrow, BorrowMut},
     fmt::Debug,
     ops::{Deref, DerefMut, Index, IndexMut},
