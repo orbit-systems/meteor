@@ -4,7 +4,7 @@ use aphelion_util::{
         sign_extend,
     },
     instruction::{
-        instruction_set::{FloatCastType, FloatPrecision, InstructionSet, LiType},
+        instruction_set::{InstructionSet, LiType},
         Instruction,
     },
     interrupt::Interrupt,
