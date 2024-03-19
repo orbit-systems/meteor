@@ -137,27 +137,27 @@ impl Callback for CliCallback {
         if self.debug {
             println!("{}", state.current_instr());
             println!(
-                "\t            ra: {:016X} rb: {:016X} rc: {:016X}\n",
+                "\t                       ra: 0x{:016X} rb: 0x{:016X} rc: 0x{:016X}",
                 state.regval(Register::Ra),
                 state.regval(Register::Rb),
                 state.regval(Register::Rc),
             );
             println!(
-                "\trd: {:016X} re: {:016X} rf: {:016X} rg: {:016X}\n",
+                "\trd: 0x{:016X} re: 0x{:016X} rf: 0x{:016X} rg: 0x{:016X}",
                 state.regval(Register::Rd),
                 state.regval(Register::Re),
                 state.regval(Register::Rf),
                 state.regval(Register::Rg),
             );
             println!(
-                "\trh: {:016X} ri: {:016X} rj: {:016X} rk: {:016X}\n",
+                "\trh: 0x{:016X} ri: 0x{:016X} rj: 0x{:016X} rk: 0x{:016X}",
                 state.regval(Register::Rh),
                 state.regval(Register::Ri),
                 state.regval(Register::Rj),
                 state.regval(Register::Rk),
             );
             println!(
-                "\tsp: {:016X} fp: {:016X} ip: {:016X} st: {:016X}\n",
+                "\tsp: 0x{:016X} fp: 0x{:016X} ip: 0x{:016X} st: 0x{:016X}",
                 state.regval(Register::Sp),
                 state.regval(Register::Fp),
                 state.regval(Register::Ip),
