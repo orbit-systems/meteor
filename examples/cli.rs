@@ -191,7 +191,7 @@ impl Callback for CliCallback {
             let cycles = state.cpu.cycle;
             let persec = cycles as f64 / elapsed.as_secs_f64();
             let (s, ms) = (elapsed.as_secs(), elapsed.subsec_millis());
-            println!("\ttime      : {s}.{ms:03}");
+            println!("\ttime      : {s}.{ms:03}s");
             println!("\tcycles    : {cycles}");
             println!("\tcycles/s  : {persec:.3}");
         }
