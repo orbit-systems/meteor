@@ -1,4 +1,4 @@
-use std::{fs::read, io, path::PathBuf, time::Instant};
+use std::{fs::read, io, path::PathBuf, thread::sleep, time::{Duration, Instant}};
 
 use aphelion_util::{io::Port, registers::Register};
 use clap::{
@@ -30,6 +30,9 @@ struct Args {
     #[arg(short, long)]
     /// output benchmark info after execution is halted
     bench:      bool,
+    /// wait time between cycles (in milliseconds).
+    #[arg(short, long, default_value_t = 0)]
+    wait: u16,
 }
 
 #[derive(Debug, Clone, Copy, Error)]
@@ -110,10 +113,11 @@ struct CliCallback {
     print_buff:  PrintBuff,
     bench:       bool,
     now:         Instant,
+    wait: u16,
 }
 impl CliCallback {
     const STDOUT: Port = Port(10);
-    fn new(debug: bool, max_cycles: usize, bench: bool) -> Self {
+    fn new(debug: bool, max_cycles: usize, bench: bool, wait: u16) -> Self {
         Self {
             should_stop: false,
             debug,
@@ -121,6 +125,7 @@ impl CliCallback {
             print_buff: PrintBuff::new(),
             bench,
             now: Instant::now(),
+            wait,
         }
     }
 }
@@ -191,9 +196,14 @@ impl Callback for CliCallback {
             println!("\tcycles/s  : {persec:.3}");
         }
     }
+    fn on_iteration_ended<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, _state: &mut State<T>) {
+        if self.wait != 0 {
+            sleep(Duration::from_millis(self.wait as u64))
+        }
+    }
 }
 
-fn cli_main(Args { path, debug, max_cycles, memory, bench }: Args) -> Result<(), Error> {
+fn cli_main(Args { path, debug, max_cycles, memory, bench, wait }: Args) -> Result<(), Error> {
     if path.is_dir() {
         Err(Error::FileLoad(FileLoadError::IsDirectory))?
     }
@@ -205,7 +215,7 @@ fn cli_main(Args { path, debug, max_cycles, memory, bench }: Args) -> Result<(),
     let Some(state) = State::new_boxed(memory.try_into().ok(), &file) else {
         Err(Error::CouldNotInitialize { cap: memory, file: file.len() })?
     };
-    let callback = CliCallback::new(debug, max_cycles, bench);
+    let callback = CliCallback::new(debug, max_cycles, bench, wait);
     let emulator = Emulator::new(state, callback);
     let _ = emulator.run();
     Ok(())
