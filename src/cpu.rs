@@ -2,7 +2,10 @@ use core::ops::{Index, IndexMut};
 
 use aphelion_util::{
     helper::ops::{f16, BitAccess, Float},
-    instruction::{instruction_set::{BranchCond, FloatPrecision}, Instruction},
+    instruction::{
+        instruction_set::{BranchCond, FloatPrecision},
+        Instruction,
+    },
     registers::Register,
 };
 use bitflags::bitflags;

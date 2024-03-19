@@ -36,7 +36,7 @@ impl Ioc {
         self.port = port;
         self.ports[port.0 as usize] = data;
     }
-    
+
     #[must_use]
     pub const fn port_data(&self, port: Port) -> u64 { self.ports[port.0 as usize % NUM_PORTS] }
     pub fn bind_port(&mut self, port: Port, interrupt: Interrupt) {

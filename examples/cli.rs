@@ -1,4 +1,10 @@
-use std::{fs::read, io, path::PathBuf, thread::sleep, time::{Duration, Instant}};
+use std::{
+    fs::read,
+    io,
+    path::PathBuf,
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
 use aphelion_util::{io::Port, registers::Register};
 use clap::{
@@ -32,7 +38,7 @@ struct Args {
     bench:      bool,
     /// wait time between cycles (in milliseconds).
     #[arg(short, long, default_value_t = 0)]
-    wait: u16,
+    wait:       u16,
 }
 
 #[derive(Debug, Clone, Copy, Error)]
@@ -113,26 +119,16 @@ struct CliCallback {
     print_buff:  PrintBuff,
     bench:       bool,
     now:         Instant,
-    wait: u16,
+    wait:        u16,
 }
 impl CliCallback {
     const STDOUT: Port = Port(10);
     fn new(debug: bool, max_cycles: usize, bench: bool, wait: u16) -> Self {
-        Self {
-            should_stop: false,
-            debug,
-            max_cycles,
-            print_buff: PrintBuff::new(),
-            bench,
-            now: Instant::now(),
-            wait,
-        }
+        Self { should_stop: false, debug, max_cycles, print_buff: PrintBuff::new(), bench, now: Instant::now(), wait }
     }
 }
 impl Callback for CliCallback {
-    fn should_stop<T: AsRef<[u8]> + AsMut<[u8]>>(
-        &mut self, state: &meteor_rs::emulator::State<T>,
-    ) -> bool {
+    fn should_stop<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, state: &meteor_rs::emulator::State<T>) -> bool {
         if self.max_cycles != 0 && state.cpu.cycle >= self.max_cycles as u64 {
             self.should_stop = true;
         }
@@ -140,7 +136,7 @@ impl Callback for CliCallback {
     }
     fn on_instruction_loaded<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, state: &mut State<T>) {
         if self.debug {
-            println!("{}", state.current_instr());
+            println!("\n[ {} ]", state.current_instr());
             println!(
                 "\t                       ra: 0x{:016X} rb: 0x{:016X} rc: 0x{:016X}",
                 state.regval(Register::Ra),
@@ -171,9 +167,7 @@ impl Callback for CliCallback {
         }
     }
 
-    fn on_output_received<T: AsRef<[u8]> + AsMut<[u8]>>(
-        &mut self, _state: &State<T>, port: Port, data: u64,
-    ) {
+    fn on_output_received<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, _state: &State<T>, port: Port, data: u64) {
         #[allow(clippy::single_match)]
         match port {
             Self::STDOUT => {
@@ -186,11 +180,13 @@ impl Callback for CliCallback {
     }
 
     fn on_run_ended<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, state: &mut State<T>) {
+        println!();
         if self.bench {
             let elapsed = self.now.elapsed();
             let cycles = state.cpu.cycle;
             let persec = cycles as f64 / elapsed.as_secs_f64();
             let (s, ms) = (elapsed.as_secs(), elapsed.subsec_millis());
+            println!("\n-------- [ benchmark result ] --------");
             println!("\ttime      : {s}.{ms:03}s");
             println!("\tcycles    : {cycles}");
             println!("\tcycles/s  : {persec:.3}");
@@ -212,9 +208,7 @@ fn cli_main(Args { path, debug, max_cycles, memory, bench, wait }: Args) -> Resu
         io::ErrorKind::PermissionDenied => Error::FileLoad(FileLoadError::NoAccess),
         err => Error::FileLoad(FileLoadError::Unknown(err)),
     })?;
-    let Some(state) = State::new_boxed(memory.try_into().ok(), &file) else {
-        Err(Error::CouldNotInitialize { cap: memory, file: file.len() })?
-    };
+    let Some(state) = State::new_boxed(memory.try_into().ok(), &file) else { Err(Error::CouldNotInitialize { cap: memory, file: file.len() })? };
     let callback = CliCallback::new(debug, max_cycles, bench, wait);
     let emulator = Emulator::new(state, callback);
     let _ = emulator.run();
