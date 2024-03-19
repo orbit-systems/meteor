@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "aphelion-util"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "806786cabf49429b90427b24b43515bd2486ad03ef31e63688bf5e244b58a105"
+checksum = "ca03ffefb0449e2d1c6f5eb95ca8b0bcb9796250997d8e2b4826861bfce1f8dc"
 dependencies = [
  "half",
  "num-traits",

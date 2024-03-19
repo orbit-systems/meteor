@@ -13,6 +13,7 @@ pub struct IntQueue {
     len:    u8,
 }
 
+
 impl IntQueue {
     pub const MAX_CAPACITY: u8 = 32;
     #[allow(clippy::cast_possible_truncation)]
