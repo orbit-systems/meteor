@@ -5,4 +5,4 @@ fn_params_layout = "Compressed"
 
 brace_style = "PreferSameLine"
 fn_single_line = true
-max_width = 150
+max_width = 100

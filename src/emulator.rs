@@ -16,20 +16,19 @@ use aphelion_util::{
 use crate::{
     cpu::{Cpu, StFlag},
     ic::Ic,
-    ioc::Ioc,
+    ioc::{IcStatus, Ioc, IocStatus, NUM_PORTS},
     mmu::{AccessMode, Mmu, Response},
 };
 
 pub trait Callback: Sized {
     fn should_stop<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, state: &State<T>) -> bool;
-    fn on_run_started<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, state: &mut State<T>);
-    fn on_run_ended<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, state: &mut State<T>);
-    fn on_iteration_started<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, state: &mut State<T>);
-    fn on_iteration_ended<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, state: &mut State<T>);
-    fn on_instruction_loaded<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, state: &mut State<T>);
-    fn on_dev_reveived<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, state: &mut State<T>, port: Port);
-    fn on_output_received<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, state: &State<T>, port: Port, data: u64);
-    fn send_input<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, state: &State<T>) -> (Port, u64);
+    fn on_run_started<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, _state: &mut State<T>) {}
+    fn on_run_ended<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, _state: &mut State<T>) {}
+    fn on_iteration_started<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, _state: &mut State<T>) {}
+    fn on_iteration_ended<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, _state: &mut State<T>) {}
+    fn on_instruction_loaded<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, _state: &mut State<T>) {}
+    fn on_output_received<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, _state: &State<T>, _port: Port, _data: u64) {}
+    fn send_input<T: AsRef<[u8]> + AsMut<[u8]>>(&mut self, _state: &State<T>) -> Option<(Port, u64)> { None }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -458,6 +457,46 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> State<T> {
     fn bit(&mut self, a: u64, b: u64, to: Register) { *self.regval_mut(to) = ops::bit(a, b); }
 
     /* end ops */
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn ioc_receive(&mut self, data: u64) {
+        match self.ioc.ioc_data.status {
+            IocStatus::StandBy => {
+                if self.ioc.port_data(Port::IO) == 0 {
+                    self.ioc.ioc_data.status = IocStatus::BindIntWaitingForPort;
+                }
+            }
+            IocStatus::BindIntWaitingForPort => {
+                self.ioc.ioc_data.bindport = Port(data as u16);
+                self.ioc.ioc_data.status = IocStatus::BindIntWaitingForInt;
+            }
+            IocStatus::BindIntWaitingForInt => {
+                self.ioc.bind_port(self.ioc.ioc_data.bindport, Interrupt(data as u8));
+                self.ioc.ioc_data.status = IocStatus::StandBy;
+            }
+        }
+    }
+    pub fn ic_receive(&mut self, data: u64) {
+        match self.ioc.ic_data.status {
+            IcStatus::StandBy => {
+                if self.ioc.port_data(Port::IO) == 0 {
+                    self.ioc.ic_data.status = IcStatus::WaitingForIvt;
+                }
+            }
+            IcStatus::WaitingForIvt => {
+                self.ic.ivt_base_address = data;
+                self.ioc.ic_data.status = IcStatus::StandBy;
+            }
+        }
+    }
+    pub fn mmu_receive(&mut self, _data: u64) { todo!("mmu IO") }
+    pub fn systimer_receive(&mut self, _data: u64) { todo!("systimer IO") }
+    pub fn send_in(&mut self, port: Port, data: u64) {
+        let port = port.0 as usize % NUM_PORTS;
+        self.ioc.ports[port] = data;
+        if self.ioc.is_bound[port] {
+            self.push_interrupt(self.ioc.binding[port]);
+        }
+    }
 }
 
 #[cfg(feature = "std")]
@@ -505,20 +544,26 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>, U: Callback> Emulator<T, U> {
 
                 // TODO: do io stuff
 
-                /* if self.state.ioc.out_pin {
+                if self.state.ioc.out_pin {
+                    let data = self.state.ioc.port_data(self.state.ioc.port);
                     match self.state.ioc.port {
-                        /* TODO: default ports */
+                        Port::INT => self.state.ioc_receive(data),
+                        Port::IO => self.state.ic_receive(data),
+                        Port::MMU => self.state.mmu_receive(data),
+                        Port::SYSTIMER => self.state.systimer_receive(data),
                         port => self.callback.on_output_received(&self.state, port, self.state.ioc.port_data(port)),
                     }
                     self.state.ioc.out_pin = false;
-                } */
+                }
 
                 self.state.cpu.registers[Register::Rz] = 0;
                 if self.state.regval(Register::Sp) > self.state.regval(Register::Fp) {
                     self.state.push_interrupt(Interrupt::STACK_UNDERFLOW);
                 }
-                
-                // receive input
+
+                if let Some((port, data)) = self.callback.send_input(&self.state) {
+                    self.state.send_in(port, data);
+                }
             }
 
             self.callback.on_iteration_ended(&mut self.state);
